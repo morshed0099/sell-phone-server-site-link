@@ -36,7 +36,7 @@ async function run(){
    app.get('/users',async(req,res)=>{
     const email=req.query.email;    
     const query={email:email}
-    const result=await userCollection.findOne(query)
+    const result=await userCollection.find(query).toArray()
     res.send(result);
    })
      app.get('/users/buyer',async (req,res)=>{
@@ -115,13 +115,33 @@ async function run(){
     })
     app.post('/products',async(req,res)=>{
         const product=req.body;
+
         const result=await producCollection.insertOne(product)
         res.send(result);
     })
+    app.get('/bookings',async(req,res)=>{
+        const email=req.query.email
+        const bookings=await bookingCollection.find({}).toArray()
+        const match=bookings.filter(book=>book?.buyer?.email===email)
+        console.log(match ,'lic 125');
+        res.send(match);
+
+    })
     app.post('/booking',async(req,res)=>{
         const booking=req.body
-        const result=await bookingCollection.insertOne(booking)
-        res.send(result);
+        // const id=booking.book._id
+        // const email=booking.buyer.email
+        // console.log(id,email ,'line 133');
+        // const bookingProducts=await bookingCollection.find({}).toArray()
+        // const match =bookingProducts.filter(book=>book.book_id===id && book.buyer.email===email)
+        // console.log(match.length,'line 137')
+        // const message="this product you alredy booking "
+        // if(match.length){          
+        //         console.log(message);
+        //         return res.send({acknowledged:false, message})
+        //     }      
+            const result=await bookingCollection.insertOne(booking);
+            res.send(result);
     })
     app.post('/wishlists',async(req,res)=>{
         const products=req.body;     

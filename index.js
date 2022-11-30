@@ -19,7 +19,8 @@ const userCollection =client.db('sellPhoneDb').collection('users')
 const categoryCollection =client.db('sellPhoneDb').collection('category')
 const producCollection =client.db('sellPhoneDb').collection('products')
 const bookingCollection =client.db('sellPhoneDb').collection('bookings')
-
+const wishlistCollecton=client.db('sellPhoneDb').collection('wishlists')
+const addvertiseCollection=client.db('sellPhoneDb').collection('advertise')
 async function run(){
    try{
      app.get('/users/seller',async (req,res)=>{
@@ -67,14 +68,30 @@ async function run(){
         const result=await producCollection.find(query).toArray()
         res.send(result)
      })
-     app.get('productFetchWithEmail',async(req,res)=>{
-        const email=req.query.email
-        const match=seller[0].email
-        const query={
-            match:email
+     app.get('/advertises',async(req,res)=>{        
+        const cursor= addvertiseCollection.find({})
+        const result=await cursor.limit(6).toArray();        
+        res.send(result)
+     })
+
+     app.post('/advertise',async(req,res)=>{
+        const addvertise=req.body
+        const id=addvertise._id        
+        const match=await addvertiseCollection.find({}).toArray()
+        const added=match.filter(pdt=>pdt._id===id)
+        const message='alredy added'
+        if(added.length){
+            return res.send({acknowledged:false, message})
         }
-        const result=await producCollection.find(query).toArray();
-        res.send(result);
+        const result=await addvertiseCollection.insertOne(addvertise);
+        res.send(result)
+     })
+  
+     app.get('/addedproducts',async(req,res)=>{
+        const email=req.query.email       
+        const allProducts=await producCollection.find({}).toArray() 
+        const addedProduct=allProducts.filter(produt=>produt.seller[0].email===email)
+         res.send(addedProduct);
               
      })
     app.post('/users',async (req,res)=>{ 
@@ -105,6 +122,30 @@ async function run(){
         const booking=req.body
         const result=await bookingCollection.insertOne(booking)
         res.send(result);
+    })
+    app.post('/wishlists',async(req,res)=>{
+        const products=req.body;     
+        const id=products._id
+        console.log(products ,'line 109')       
+        const alredyAdded=await wishlistCollecton.find({}).toArray()
+        const added=alredyAdded.filter(add=>add._id===id)
+        console.log(added,'line 112',added.length);
+        const message='You alredy added this product'
+        if(added.length){
+            console.log(message,'line 115');
+            return res.send({acknowledged:false, message})
+           
+        }
+        const result= await wishlistCollecton.insertOne(products)
+            res.send(result);
+        
+    })
+    app.get('/wishlist',async(req,res)=>{
+        const email=req.query.email        
+        const wishlist=await wishlistCollecton.find({}).toArray()
+        const match=wishlist.filter(wish=>wish.buyerIfo.email===email)
+        res.send(match);
+
     })
     app.put('/users/buyer/:id',async(req,res)=>{
         const id=req.params.id
@@ -144,6 +185,12 @@ async function run(){
         const id =req.params.id;
         const query={_id:ObjectId(id)}
         const result=await userCollection.deleteOne(query);
+        res.send(result);
+    })
+    app.delete('/products/:id',async(req,res)=>{
+        const id =req.params.id;
+        const query={_id:ObjectId(id)}        
+        const result=await producCollection.deleteOne(query);
         res.send(result);
     })
    }finally{

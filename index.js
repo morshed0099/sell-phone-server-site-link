@@ -4,7 +4,7 @@ const port=process.env.PORT || 5000
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors=require('cors');
-const { query } = require('express');
+const jwt=require('jsonwebtoken');
 
 app.use(cors())
 app.use(express.json())
@@ -21,6 +21,24 @@ const producCollection =client.db('sellPhoneDb').collection('products')
 const bookingCollection =client.db('sellPhoneDb').collection('bookings')
 const wishlistCollecton=client.db('sellPhoneDb').collection('wishlists')
 const addvertiseCollection=client.db('sellPhoneDb').collection('advertise')
+
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send('unauthorized access');
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    jwt.verify(token, process.env.TOKEN, function (err, decoded ) {
+        if (err) {
+            return res.status(403).send({ message: 'forbidden access' })
+        }
+        req.decoded  = decoded ;
+        next();
+    })
+
+}
 async function run(){
    try{
      app.get('/users/seller',async (req,res)=>{
@@ -33,6 +51,8 @@ async function run(){
     //     const result=await userCollection.find(query).toArray()
     //     res.send(result)
     //  })
+
+
    app.get('/users',async(req,res)=>{
     const email=req.query.email;    
     const query={email:email}
@@ -87,8 +107,13 @@ async function run(){
         res.send(result)
      })
   
-     app.get('/addedproducts',async(req,res)=>{
-        const email=req.query.email       
+     app.get('/addedproducts',verifyJWT,async(req,res)=>{
+        const email=req.query.email 
+        const decodedEmail=req.decoded.email
+        if(email !==decodedEmail){
+            return res.status(403).send({message:"forbiddedn access"})
+        }
+
         const allProducts=await producCollection.find({}).toArray() 
         const addedProduct=allProducts.filter(produt=>produt.seller[0].email===email)
          res.send(addedProduct);
@@ -115,7 +140,6 @@ async function run(){
     })
     app.post('/products',async(req,res)=>{
         const product=req.body;
-
         const result=await producCollection.insertOne(product)
         res.send(result);
     })
@@ -227,6 +251,22 @@ async function run(){
         const result1=await addvertiseCollection.deleteOne(query1);      
         res.send({result,result1});
     })
+    app.get('/jwt',async(req,res)=>{
+        const email=req.query.email
+        const query={email:email
+        }
+        const user=await userCollection.find(query).toArray();
+        console.log(user);
+        if(user){
+            console.log(user)
+            const token=jwt.sign({email},process.env.TOKEN, {expiresIn: '5h'})
+            return res.send({token:token})
+        }
+            res.status(403).send({token:' '})
+           
+       })
+      
+
    }finally{
 
    }

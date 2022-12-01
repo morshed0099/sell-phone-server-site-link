@@ -59,6 +59,15 @@ async function run(){
     const result=await userCollection.find(query).toArray()
     res.send(result);
    })
+   app.get('/users/admin/:email',async(req,res)=>{
+    const email =req.params.email
+    const query={
+        email:email
+    }
+    const admin =await userCollection.findOne(query)
+    res.send({isAdmin:admin?.userRoll==="admin"});    
+    
+   })
      app.get('/users/buyer',async (req,res)=>{
         const qurey={userRoll:'buyer'}        
         const result=await userCollection.find(qurey).toArray();

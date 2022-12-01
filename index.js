@@ -122,39 +122,46 @@ async function run(){
     app.get('/bookings',async(req,res)=>{
         const email=req.query.email
         const bookings=await bookingCollection.find({}).toArray()
-        const match=bookings.filter(book=>book?.buyer?.email===email)
-        console.log(match ,'lic 125');
+        const match=bookings.filter(book=>book?.buyer?.email===email)       
         res.send(match);
 
     })
     app.post('/booking',async(req,res)=>{
         const booking=req.body
-        // const id=booking.book._id
-        // const email=booking.buyer.email
-        // console.log(id,email ,'line 133');
-        // const bookingProducts=await bookingCollection.find({}).toArray()
-        // const match =bookingProducts.filter(book=>book.book_id===id && book.buyer.email===email)
-        // console.log(match.length,'line 137')
-        // const message="this product you alredy booking "
-        // if(match.length){          
-        //         console.log(message);
-        //         return res.send({acknowledged:false, message})
-        //     }      
-            const result=await bookingCollection.insertOne(booking);
-            res.send(result);
+        const id =req.body.booking_id
+        const email=req.body.buyer_email
+        const query={
+            booking_id:id,
+            buyer_email:email,
+        }
+        console.log(id,"line,132")
+        const oldBooking=await bookingCollection.find(query).toArray()       
+        const message="you have alredy booking the items go to my order"
+        if(oldBooking.length){
+            return res.send({acknowledged:false,message})
+        }        
+        const result=await bookingCollection.insertOne(booking);
+        res.send(result);
+    })
+    app.delete('/bookings/:postid',async(req,res)=>{
+        const id =req.params.postid      
+        const query={_id:ObjectId(id)}
+        const result=await bookingCollection.deleteOne(query); 
+        res.send(result);
     })
     app.post('/wishlists',async(req,res)=>{
         const products=req.body;     
-        const id=products._id
-        console.log(products ,'line 109')       
-        const alredyAdded=await wishlistCollecton.find({}).toArray()
-        const added=alredyAdded.filter(add=>add._id===id)
-        console.log(added,'line 112',added.length);
+        const id=req.body.product_id 
+        const email=req.body.buyer_email   
+        const query={
+            product_id :id,
+            buyer_email:email
+
+        }    
+        const alredyAdded=await wishlistCollecton.find(query).toArray()          
         const message='You alredy added this product'
-        if(added.length){
-            console.log(message,'line 115');
-            return res.send({acknowledged:false, message})
-           
+        if(alredyAdded.length){            
+            return res.send({acknowledged:false, message})           
         }
         const result= await wishlistCollecton.insertOne(products)
             res.send(result);
@@ -165,7 +172,12 @@ async function run(){
         const wishlist=await wishlistCollecton.find({}).toArray()
         const match=wishlist.filter(wish=>wish.buyerIfo.email===email)
         res.send(match);
-
+    })
+    app.delete('/wishlist/:postid',async(req,res)=>{
+        const  id =req.params.postid;
+        const query=({_id:id})
+        const result=await wishlistCollecton.deleteOne(query);
+        res.send(result)
     })
     app.put('/users/buyer/:id',async(req,res)=>{
         const id=req.params.id
@@ -209,9 +221,11 @@ async function run(){
     })
     app.delete('/products/:id',async(req,res)=>{
         const id =req.params.id;
-        const query={_id:ObjectId(id)}        
+        const query={_id:ObjectId(id)}  
+        const query1={_id:id}      
         const result=await producCollection.deleteOne(query);
-        res.send(result);
+        const result1=await addvertiseCollection.deleteOne(query1);      
+        res.send({result,result1});
     })
    }finally{
 

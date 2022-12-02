@@ -5,6 +5,7 @@ require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors=require('cors');
 const jwt=require('jsonwebtoken');
+const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 app.use(cors())
 app.use(express.json())
@@ -21,6 +22,7 @@ const producCollection =client.db('sellPhoneDb').collection('products')
 const bookingCollection =client.db('sellPhoneDb').collection('bookings')
 const wishlistCollecton=client.db('sellPhoneDb').collection('wishlists')
 const addvertiseCollection=client.db('sellPhoneDb').collection('advertise')
+const paymetnsCollection=client.db('sellPhoneDb').collection('payments')
 
 function verifyJWT(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -66,6 +68,26 @@ async function run(){
     }
     const admin =await userCollection.findOne(query)
     res.send({isAdmin:admin?.userRoll==="admin"});    
+    
+   })
+   app.get('/users/seller/:email',async(req,res)=>{
+    const email =req.params.email;
+    console.log(email)
+    const query={
+        email:email
+    }
+    const seller =await userCollection.findOne(query)
+    res.send({isSeller:seller?.userRoll==="seller"});    
+    
+   })
+   app.get('/users/buyer/:email',async(req,res)=>{
+    const email =req.params.email;
+    console.log(email)
+    const query={
+        email:email
+    }
+    const seller =await userCollection.findOne(query)
+    res.send({isBuyer:seller?.userRoll==="buyer"});    
     
    })
      app.get('/users/buyer',async (req,res)=>{
@@ -158,6 +180,12 @@ async function run(){
         const match=bookings.filter(book=>book?.buyer?.email===email)       
         res.send(match);
 
+    })
+    app.get('/booking/:id',async(req,res)=>{
+        const id=req.params.id
+        const query={_id:ObjectId(id)}
+        const payment =await bookingCollection.findOne(query)
+        res.send(payment);
     })
     app.post('/booking',async(req,res)=>{
         const booking=req.body
@@ -275,7 +303,46 @@ async function run(){
            
        })
       
-
+      
+       app.post("/create-payment-intent", async (req, res) => {
+        const booking=req.body;
+        const price =booking.price
+        const amount=price*100
+        const paymentIntent = await stripe.paymentIntents.create({
+            currency: "usd",
+            amount:amount,
+            "payment_method_types": [
+                "card"
+              ],
+        }); 
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      });
+      app.post('/payments', async (req, res) =>{
+        const payment = req.body;
+        const result = await paymetnsCollection.insertOne(payment);
+        const id = payment.common_id    
+        const query={_id:id}
+        const remove=await addvertiseCollection.deleteOne(query);
+        const productRemove={_id:ObjectId(id)}
+        const removeProduct=await producCollection.deleteOne(productRemove);
+        res.send(result);
+    })
+    app.put('/booking/:matchid',async(req,res)=>{
+        const id=req.params.matchid 
+        console.log(id,'314');    
+        const query={_id:ObjectId(id)}     
+        const options = { upsert: true }
+            const updatedDoc ={
+                $set: {
+                  paid:true
+                }
+            }
+           const result=await bookingCollection.updateMany(query,updatedDoc,options) 
+           res.send(result);
+    })
+      
    }finally{
 
    }
